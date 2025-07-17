@@ -4,6 +4,12 @@ I am not a professional in android development, therefore the widget might not w
 
 The goal of this fork is to merge the efforts of https://github.com/Tiim/Android-Markdown-Widget and ttps://github.com/Irony95/ObsidianAndroidWidget/. Personally, I use Markor + Syncthing for my notes, so I just want to have the styling of the forked version, but with the onclick functionality of the original.
 
+## TODO:
+- [x] Fix build
+- [ ] Make clicking the contents open the file in markor
+- [ ] Improve UI
+- [ ] Improve UX (don't select folder then file every time, etc)
+
 ## Reqs:
 - Allow open in (Markor, other) app on tap.
 - Allow multiple instances of the widget pointing to other files.
