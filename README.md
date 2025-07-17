@@ -17,6 +17,9 @@ The goal of this fork is to merge the efforts of https://github.com/Tiim/Android
 ## Building:
 TBD
 
+## License:
+[GPL v3.0](./LICENSE.md)
+
 <!-- 
 # How to use
 1. Install the .apk app on your android device from the [releases Section](https://github.com/Irony95/ObsidianAndroidWidget/releases/latest)
