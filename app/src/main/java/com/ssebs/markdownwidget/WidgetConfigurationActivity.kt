@@ -67,8 +67,9 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import androidx.core.net.toUri
 
-
+import androidx.compose.material3.*
 class WidgetConfigurationActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         WebView.enableSlowWholeDocumentDraw()
@@ -86,8 +87,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
 
         val getMarkdownFile =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                if (it.resultCode == Activity.RESULT_OK && it.data?.data != null)
-                {
+                if (it.resultCode == Activity.RESULT_OK && it.data?.data != null) {
                     val uri = it.data!!.data!!
                     val path = uri.path?.split(":")?.getOrNull(1) ?: ""
                     fileMutable.value = path
@@ -104,19 +104,36 @@ class WidgetConfigurationActivity : ComponentActivity() {
             val context = LocalContext.current
 
             val filePath by fileMutable.collectAsState()
+
             ObsidianAndroidWidgetsTheme {
                 val appWidgetId = intent?.extras?.getInt(
                     AppWidgetManager.EXTRA_APPWIDGET_ID,
                     AppWidgetManager.INVALID_APPWIDGET_ID
                 ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
-
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Configure Widget") },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                titleContentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                    }
+                ) {innerPadding ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .padding(innerPadding) // ← respects top bar padding
+                        .padding(16.dp), // additional spacing
+                    horizontalAlignment = Alignment.CenterHorizontally, // center content
+                    verticalArrangement = Arrangement.Top
                 ) {
-                    Row {
-                        Text("newline\n\n")
-                    }
+                    Text(
+                        "Configure Your Widget",
+                        modifier = Modifier.padding(bottom = 24.dp),
+                        color = Color.Black
+                    )
                     FilePicker(filePath = filePath, "Select Markdown File") {
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -125,19 +142,17 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         }
                         getMarkdownFile.launch(intent)
                     }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        Button(onClick = {
-                            if (fileMutable.value == "")
-                            {
-                                Toast.makeText(baseContext, "Please Select a page to show!", Toast.LENGTH_LONG).show()
+
+                    Button(
+                        onClick = {
+                            if (fileMutable.value == "") {
+                                Toast.makeText(
+                                    baseContext,
+                                    "Please Select a page to show!",
+                                    Toast.LENGTH_LONG
+                                ).show()
                                 return@Button
                             }
-
                             CoroutineScope(Dispatchers.IO).launch {
                                 val manager = GlanceAppWidgetManager(baseContext)
                                 val gId = manager.getGlanceIdBy(appWidgetId)
@@ -149,14 +164,20 @@ class WidgetConfigurationActivity : ComponentActivity() {
                                 PageWidget.update(context, gId)
                             }
 
-                            val resultValue = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                            val resultValue =
+                                Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                             setResult(Activity.RESULT_OK, resultValue)
                             startWorkManager(context)
                             finish()
-                        }) {
-                            Text("Save")
-                        }
+                        },
+                        modifier = Modifier
+                            .padding(top = 24.dp)
+                            .align(Alignment.CenterHorizontally)
+                    ) {
+                        Text("Save")
                     }
+
+                }
                 }
             }
         }
@@ -178,16 +199,19 @@ class WidgetConfigurationActivity : ComponentActivity() {
 fun FilePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
     val scroll = rememberScrollState(0)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    )
-    {
-        Text(filePath, modifier = Modifier
-            .width(250.dp)
-            .horizontalScroll(scroll))
-        Button(onClick = onClick, modifier = Modifier.padding(5.dp)) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        Text(
+            filePath,
+            modifier = Modifier
+                .horizontalScroll(scroll)
+                .padding(bottom = 8.dp)
+        )
+        Button(onClick = onClick) {
             Text(text = buttonText)
         }
     }
