@@ -64,6 +64,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.URLEncoder
+import androidx.core.net.toUri
 
 object PageWidget: GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
@@ -96,6 +97,7 @@ object PageWidget: GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
             val mdFilePath = currentState(key=mdFilePathKey) ?: ""
+//            val text = currentState(key = textKey) ?: getNoteText(context, mdFilePath)
             val text = currentState(key=textKey) ?: getNoteText(context, mdFilePath)
             val vaultPath = currentState(key= vaultPathKey) ?: ""
             val showTools = currentState(key=showTools) ?: true
@@ -112,25 +114,20 @@ object PageWidget: GlanceAppWidget() {
             encodedFile = URLEncoder.encode(encodedFile, "UTF-8").replace("+", "%20")
             var encodedVault = vaultPath.split("/").lastOrNull()
             encodedVault = URLEncoder.encode(encodedVault, "UTF-8").replace("+", "%20")
+            val uri = Uri.parse(mdFilePath)
 
-//            val openNote = Intent(Intent.ACTION_VIEW,
-//                Uri.parse("obsidian://open?vault=$encodedVault&file=$encodedFile")
-//            )
-            val openNote = Intent(Intent.ACTION_EDIT,
-                Uri.parse("$encodedFile")
-            )
-//            openNote.setDataAndType(uri.normalizeScheme(), "text/plain")
-            //intent.addCategory(Intent.CATEGORY_OPENABLE)
-            openNote.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            openNote.flags = Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-
+            val openNote = Intent(Intent.ACTION_EDIT).apply {
+                setDataAndType(uri, "text/markdown")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                setPackage("net.gsantner.markor") // Force Markor as the target app
+            }
             val newNote = Intent(Intent.ACTION_VIEW,
                 Uri.parse("obsidian://new?vault=$encodedVault&name=New%20note")
             )
-            val searchNote = Intent(Intent.ACTION_VIEW,
+            val searchNote = Intent(
+                Intent.ACTION_VIEW,
                 Uri.parse("obsidian://search?vault=$encodedVault")
             )
-
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
@@ -179,25 +176,6 @@ object PageWidget: GlanceAppWidget() {
                         .cornerRadius(10.dp)
                 ) {
                     item {
-                        val fileName = mdFilePath.split("/").lastOrNull()
-                        if (fileName != null)
-                        {
-                            Text(
-                                text = fileName.dropLast(3),
-                                modifier = GlanceModifier
-                                    .fillMaxSize()
-                                    .padding(start = paddingSize.dp, bottom = (paddingSize*3).dp)
-                                    .clickable(actionStartActivity(openNote)),
-                                style = TextStyle(
-                                    fontSize = 32.sp,
-                                    color = ColorProvider(R.color.white),
-                                    fontWeight = FontWeight.Bold,
-                                    fontStyle = FontStyle.Italic
-                                )
-                            )
-                        }
-                    }
-                    item {
 
                         val remoteView = RemoteViews(LocalContext.current.packageName, R.layout.test_layout)
                         remoteView.setImageViewBitmap(R.id.imageView,renderer.renderBitmap(text, localWidth.toInt()))
@@ -230,12 +208,14 @@ object PageWidget: GlanceAppWidget() {
             return ""
         }
     }
-    fun getNoteText(context: Context, directory : String): String {
-        if (directory == "") return ""
-        val reader = FileReader(Environment.getExternalStorageDirectory().toString() + "/" + directory)
-        val text = reader.readText()
-        reader.close()
-        return text
+    fun getNoteText(context: Context, uriString: String): String {
+        if (uriString.isEmpty()) return ""
+        return try {
+            val uri = uriString.toUri()
+            context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() } ?: ""
+        } catch (e: Exception) {
+            ""
+        }
     }
 }
 

@@ -4,15 +4,10 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.storage.StorageManager
-import android.provider.DocumentsContract
-import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.Log
 import android.webkit.WebView
@@ -21,18 +16,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -46,11 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -58,7 +47,6 @@ import androidx.work.PeriodicWorkRequest.Companion.MIN_PERIODIC_INTERVAL_MILLIS
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.ssebs.markdownwidget.ui.theme.ObsidianAndroidWidgetsTheme
-import com.ssebs.markdownwidget.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,8 +78,8 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 if (it.resultCode == Activity.RESULT_OK && it.data?.data != null) {
                     val uri = it.data!!.data!!
                     val path = uri.path?.split(":")?.getOrNull(1) ?: ""
-                    fileMutable.value = path
 
+                    fileMutable.value = uri.toString()
                     // Extract vault as the parent directory of the file
                     val folder = File("/storage/emulated/0/$path").parent ?: ""
 
@@ -104,7 +92,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
             val context = LocalContext.current
 
             val filePath by fileMutable.collectAsState()
-
+            var showTools by remember { mutableStateOf(true) } // <-- new switch state
             ObsidianAndroidWidgetsTheme {
                 val appWidgetId = intent?.extras?.getInt(
                     AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -142,7 +130,19 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         }
                         getMarkdownFile.launch(intent)
                     }
-
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Show Tools")
+                        Spacer(modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = showTools,
+                            onCheckedChange = { showTools = it }
+                        )
+                    }
                     Button(
                         onClick = {
                             if (fileMutable.value == "") {
@@ -194,7 +194,10 @@ class WidgetConfigurationActivity : ComponentActivity() {
             .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 }
-
+fun readTextFromUri(context: Context, uriString: String): String {
+    val uri = Uri.parse(uriString)
+    return context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() } ?: ""
+}
 @Composable
 fun FilePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
     val scroll = rememberScrollState(0)
