@@ -65,19 +65,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.TimeUnit
+import androidx.core.net.toUri
 
 
 class WidgetConfigurationActivity : ComponentActivity() {
-
-    private val INITIAL_URI = Environment.getExternalStorageDirectory().absolutePath
-
-
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         WebView.enableSlowWholeDocumentDraw()
         if (Build.VERSION.SDK_INT >= 30) {
             if (!Environment.isExternalStorageManager()) {
-                val uri = Uri.parse("package:${BuildConfig.APPLICATION_ID}")
+                val uri = "package:${BuildConfig.APPLICATION_ID}".toUri()
                 startActivity(
                     Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri)
                 )
@@ -85,54 +82,28 @@ class WidgetConfigurationActivity : ComponentActivity() {
         }
 
         super.onCreate(savedInstanceState)
-        var folderMutable = MutableStateFlow("")
         var fileMutable = MutableStateFlow("")
 
         val getMarkdownFile =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 if (it.resultCode == Activity.RESULT_OK && it.data?.data != null)
                 {
-                    fileMutable.value = it.data!!.data!!.path!!.split(":")[1]
+                    val uri = it.data!!.data!!
+                    val path = uri.path?.split(":")?.getOrNull(1) ?: ""
+                    fileMutable.value = path
+
+                    // Extract vault as the parent directory of the file
+                    val folder = File("/storage/emulated/0/$path").parent ?: ""
+
+                    Log.d("file_path", fileMutable.value)
                     Log.d("test", fileMutable.value)
                 }
             }
-
-        val getVaultFolder = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode == Activity.RESULT_OK && it.data?.data != null)
-            {
-                folderMutable.value = it.data!!.data!!.path!!.split(":")[1]
-                Log.d("test", fileMutable.value)
-            }
-        }
-
 
         setContent {
             val context = LocalContext.current
 
             val filePath by fileMutable.collectAsState()
-            val vaultPath by folderMutable.collectAsState()
-            var showTools by remember {
-                mutableStateOf(true)
-            }
-
-            var imageBmp by remember {
-                mutableStateOf<Bitmap?>(null)
-            }
-            val md = """  
-            # renderer test!
-            1. select the markdown page that you want to showcase
-            2. click on show buttons to have buttons for reload and new note
-            3. Otherwise, the full widget will only show the page
-            4. the new note button will be created in the vault of the file chosen!
-
-
-            - [x] On the *widget*, click on the text to open the note in obsidian
-            - [x] The *widget* will update every 15 mins            
-            """.trimIndent()
-            val render = BitmapRenderer(context)
-            imageBmp = render.renderBitmap(md, 1000)
-
-
             ObsidianAndroidWidgetsTheme {
                 val appWidgetId = intent?.extras?.getInt(
                     AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -144,53 +115,26 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         .fillMaxSize()
                 ) {
                     Row {
-                        Text("newline")
+                        Text("newline\n\n")
                     }
-                    filePicker(filePath = vaultPath, "Select Vault") {
-                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        getVaultFolder.launch(intent)
-                    }
-                    filePicker(filePath = filePath, "Select Page") {
-                        if (vaultPath == "")
-                        {
-                            Toast.makeText(context, "Please select vault first to allow read access", Toast.LENGTH_LONG).show()
-                            return@filePicker
-                        }
+                    FilePicker(filePath = filePath, "Select Markdown File") {
                         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            putExtra(DocumentsContract.EXTRA_INITIAL_URI, INITIAL_URI)
                             addCategory(Intent.CATEGORY_OPENABLE)
                             type = "text/markdown"
                         }
                         getMarkdownFile.launch(intent)
                     }
-
-
-                    Row {
-                        checkboxAndText(checked = showTools, text = "show Buttons", onCheckedChange = {
-                            showTools = it
-                        })
-                    }
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(10.dp),
                         horizontalArrangement = Arrangement.End,
-
                     ) {
-
                         Button(onClick = {
                             if (fileMutable.value == "")
                             {
                                 Toast.makeText(baseContext, "Please Select a page to show!", Toast.LENGTH_LONG).show()
-                                return@Button
-                            }
-                            if (folderMutable.value == "")
-                            {
-                                Toast.makeText(baseContext, "Please Select a vault to work in!", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
 
@@ -200,8 +144,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
 
                                 updateAppWidgetState(context, gId) {
                                     it[PageWidget.mdFilePathKey] = fileMutable.value
-                                    it[PageWidget.vaultPathKey] = folderMutable.value
-                                    it[PageWidget.showTools] = showTools
+                                    it[PageWidget.showTools] = true
                                 }
                                 PageWidget.update(context, gId)
                             }
@@ -211,23 +154,8 @@ class WidgetConfigurationActivity : ComponentActivity() {
                             startWorkManager(context)
                             finish()
                         }) {
-                            Text("Complete")
+                            Text("Save")
                         }
-                    }
-
-                    if (imageBmp != null)
-                    {
-                        LazyColumn(modifier = Modifier.background(Color.DarkGray),
-                            content = {
-                            item {
-                                Image(modifier = Modifier
-                                    .fillMaxSize(),
-                                    bitmap = imageBmp!!.asImageBitmap(),
-                                    contentDescription = "asdfsadf"
-                                )
-                            }
-                        })
-
                     }
                 }
             }
@@ -247,7 +175,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
 }
 
 @Composable
-fun filePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
+fun FilePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
     val scroll = rememberScrollState(0)
 
     Row(
@@ -266,7 +194,7 @@ fun filePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun checkboxAndText(checked: Boolean, text: String, onCheckedChange: (Boolean) -> Unit) {
+fun CheckboxAndText(checked: Boolean, text: String, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically

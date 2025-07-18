@@ -24,9 +24,7 @@ class UpdateWidgetWorker(private val context: Context,
                 }
                 PageWidget.update(context, it)
             }
-
         }
-
         return Result.success()
     }
 }
