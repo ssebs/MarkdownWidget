@@ -4,11 +4,16 @@ I am not a professional in android development, therefore the widget might not w
 
 The goal of this fork is to merge the efforts of https://github.com/Tiim/Android-Markdown-Widget and ttps://github.com/Irony95/ObsidianAndroidWidget/. Personally, I use Markor + Syncthing for my notes, so I just want to have the styling of the forked version, but with the onclick functionality of the original.
 
+## Download at:
+- https://github.com/ssebs/MarkdownWidget/releases
+
 ## TODO:
 - [x] Fix build
-- [ ] Make clicking the contents open the file in markor
-- [ ] Improve UI
-- [ ] Improve UX (don't select folder then file every time, etc)
+- [x] Make clicking the contents open the file in markor
+- [x] Improve UI
+- [x] Improve UX (don't select folder then file every time, etc)
+- [ ] Fix bug with files being too large
+- [ ] Cleanup
 
 ## Reqs:
 - Allow open in (Markor, other) app on tap.
@@ -16,14 +21,6 @@ The goal of this fork is to merge the efforts of https://github.com/Tiim/Android
 
 ## Building:
 TBD
-
-
-`val openNote = Intent(Intent.ACTION_EDIT).apply {
-    setDataAndType(uri, "text/markdown")
-    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    setPackage("net.gsantner.markor") // Force Markor as the target app
-}`
-
 
 ## License:
 [GPL v3.0](./LICENSE.md)
