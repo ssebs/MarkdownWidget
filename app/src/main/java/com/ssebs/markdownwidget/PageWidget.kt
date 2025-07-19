@@ -121,13 +121,13 @@ object PageWidget: GlanceAppWidget() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 setPackage("net.gsantner.markor") // Force Markor as the target app
             }
-            val newNote = Intent(Intent.ACTION_VIEW,
-                Uri.parse("obsidian://new?vault=$encodedVault&name=New%20note")
-            )
-            val searchNote = Intent(
-                Intent.ACTION_VIEW,
-                Uri.parse("obsidian://search?vault=$encodedVault")
-            )
+//            val newNote = Intent(Intent.ACTION_VIEW,
+//                Uri.parse("obsidian://new?vault=$encodedVault&name=New%20note")
+//            )
+//            val searchNote = Intent(
+//                Intent.ACTION_VIEW,
+//                Uri.parse("obsidian://search?vault=$encodedVault")
+//            )
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
@@ -135,38 +135,38 @@ object PageWidget: GlanceAppWidget() {
                     .padding(paddingSize.dp)
                     .background(Color(0xff262626)),
             ) {
-                if (showTools) {
-                    Row(modifier = GlanceModifier){
-                        Image(
-                            provider = ImageProvider(R.drawable.baseline_refresh_24),
-                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
-                            contentDescription = "refresh",
-                            modifier = GlanceModifier
-                                .clickable(actionRunCallback<ReloadWidget>())
-                                .size(buttonSize.dp)
-                                .padding(start=paddingSize.dp)
-                        )
-
-                        Image(
-                            provider = ImageProvider(R.drawable.baseline_add_circle_outline_24),
-                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
-                            contentDescription = "add",
-                            modifier = GlanceModifier
-                                .clickable(actionStartActivity(newNote))
-                                .size(buttonSize.dp)
-                                .padding(start=paddingSize.dp)
-                        )
-                        Image(
-                            provider = ImageProvider(R.drawable.baseline_search_24),
-                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
-                            contentDescription = "search",
-                            modifier = GlanceModifier
-                                .clickable(actionStartActivity(searchNote))
-                                .size(buttonSize.dp)
-                                .padding(start=paddingSize.dp)
-                        )
-                    }
-                }
+//                if (showTools) {
+//                    Row(modifier = GlanceModifier){
+//                        Image(
+//                            provider = ImageProvider(R.drawable.baseline_refresh_24),
+//                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
+//                            contentDescription = "refresh",
+//                            modifier = GlanceModifier
+//                                .clickable(actionRunCallback<ReloadWidget>())
+//                                .size(buttonSize.dp)
+//                                .padding(start=paddingSize.dp)
+//                        )
+//
+//                        Image(
+//                            provider = ImageProvider(R.drawable.baseline_add_circle_outline_24),
+//                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
+//                            contentDescription = "add",
+//                            modifier = GlanceModifier
+//                                .clickable(actionStartActivity(newNote))
+//                                .size(buttonSize.dp)
+//                                .padding(start=paddingSize.dp)
+//                        )
+//                        Image(
+//                            provider = ImageProvider(R.drawable.baseline_search_24),
+//                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
+//                            contentDescription = "search",
+//                            modifier = GlanceModifier
+//                                .clickable(actionStartActivity(searchNote))
+//                                .size(buttonSize.dp)
+//                                .padding(start=paddingSize.dp)
+//                        )
+//                    }
+//                }
 
 
                 LazyColumn(

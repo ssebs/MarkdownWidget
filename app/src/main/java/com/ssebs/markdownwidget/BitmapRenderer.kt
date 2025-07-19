@@ -7,8 +7,8 @@ import android.graphics.Color
 import android.widget.TextView
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
-import io.noties.markwon.MarkwonConfiguration
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
+import io.noties.markwon.core.MarkwonTheme
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.ext.tables.TableTheme
@@ -21,8 +21,8 @@ class BitmapRenderer(val context: Context) {
     companion object {
         const val IMAGE_PAD = 10
         // Maximum bitmap dimensions to stay within memory limits
-        const val MAX_BITMAP_WIDTH = 1200
-        const val MAX_BITMAP_HEIGHT = 2500
+        const val MAX_BITMAP_WIDTH = 1000
+        const val MAX_BITMAP_HEIGHT = 2400
         // Maximum bitmap size in bytes (roughly 10MB to be safe)
         const val MAX_BITMAP_SIZE_BYTES = 10 * 1024 * 1024
     }
@@ -41,6 +41,20 @@ class BitmapRenderer(val context: Context) {
         .usePlugin(SoftBreakAddsNewLinePlugin.create())
         .usePlugin(StrikethroughPlugin.create())
         .usePlugin(HtmlPlugin.create())
+        .usePlugin(object : AbstractMarkwonPlugin() {
+            override fun configureTheme(builder: MarkwonTheme.Builder) {
+                builder.headingBreakHeight(1).headingTextSizeMultipliers(
+                    floatArrayOf(
+                        1.5f,
+                        1.25f,
+                        1.15f,
+                        1f,
+                        .83f,
+                        .67f
+                    )
+                )
+            }
+        })
         .build()
 
     fun renderBitmap(string: String, width: Int): Bitmap {
@@ -48,7 +62,7 @@ class BitmapRenderer(val context: Context) {
 
         val textView = TextView(context)
         textView.setTextColor(Color.WHITE)
-        textView.textSize = 15F
+        textView.textSize = 16F
 
         markwon.setMarkdown(textView, string)
 
@@ -74,9 +88,9 @@ class BitmapRenderer(val context: Context) {
         textView.layout(0, 0, paddedWidth, measuredHeight)
 
         // Use RGB_565 instead of ARGB_8888 to reduce memory usage by 50%
-        val bitmap = Bitmap.createBitmap(paddedWidth, measuredHeight, Bitmap.Config.RGB_565)
+        val bitmap = Bitmap.createBitmap(paddedWidth, measuredHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.BLACK) // Set background color since RGB_565 doesn't support transparency
+        canvas.drawColor(Color.TRANSPARENT) // Set background color since RGB_565 doesn't support transparency
         textView.draw(canvas)
 
         return bitmap
@@ -91,9 +105,9 @@ class BitmapRenderer(val context: Context) {
         textView.layout(0, 0, originalWidth, originalHeight)
 
         // Create original bitmap
-        val originalBitmap = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.RGB_565)
+        val originalBitmap = Bitmap.createBitmap(originalWidth, originalHeight, Bitmap.Config.ARGB_8888)
         val originalCanvas = Canvas(originalBitmap)
-        originalCanvas.drawColor(Color.BLACK)
+        originalCanvas.drawColor(Color.TRANSPARENT)
         textView.draw(originalCanvas)
 
         // Scale down
