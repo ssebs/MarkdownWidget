@@ -77,6 +77,11 @@ class WidgetConfigurationActivity : ComponentActivity() {
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 if (it.resultCode == Activity.RESULT_OK && it.data?.data != null) {
                     val uri = it.data!!.data!!
+
+                    val contentResolver = applicationContext.contentResolver
+                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+
                     val path = uri.path?.split(":")?.getOrNull(1) ?: ""
 
                     fileMutable.value = uri.toString()
@@ -130,25 +135,12 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         }
                         getMarkdownFile.launch(intent)
                     }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Show Tools")
-                        Spacer(modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = showTools,
-                            onCheckedChange = { showTools = it }
-                        )
-                    }
                     Button(
                         onClick = {
                             if (fileMutable.value == "") {
                                 Toast.makeText(
                                     baseContext,
-                                    "Please Select a page to show!",
+                                    "Please Select a file!",
                                     Toast.LENGTH_LONG
                                 ).show()
                                 return@Button
@@ -159,7 +151,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
 
                                 updateAppWidgetState(context, gId) {
                                     it[PageWidget.mdFilePathKey] = fileMutable.value
-                                    it[PageWidget.showTools] = true
+                                    it[PageWidget.showTools] = showTools
                                 }
                                 PageWidget.update(context, gId)
                             }
@@ -194,10 +186,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
             .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 }
-fun readTextFromUri(context: Context, uriString: String): String {
-    val uri = Uri.parse(uriString)
-    return context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() } ?: ""
-}
+
 @Composable
 fun FilePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
     val scroll = rememberScrollState(0)
@@ -217,17 +206,5 @@ fun FilePicker(filePath: String, buttonText: String, onClick: () -> Unit) {
         Button(onClick = onClick) {
             Text(text = buttonText)
         }
-    }
-}
-
-@Composable
-fun CheckboxAndText(checked: Boolean, text: String, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-
-        Text(text = text, modifier = Modifier.clickable { onCheckedChange(!checked) })
     }
 }

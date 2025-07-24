@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.text.Html
 import android.util.Log
 import android.util.TypedValue
 import android.widget.RemoteViews
@@ -13,6 +14,7 @@ import android.widget.TableLayout
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
@@ -65,6 +67,11 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.URLEncoder
 import androidx.core.net.toUri
+import androidx.core.text.toHtml
+import org.intellij.markdown.flavours.MarkdownFlavourDescriptor
+import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.parser.MarkdownParser
 
 object PageWidget: GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
@@ -97,29 +104,26 @@ object PageWidget: GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
             val mdFilePath = currentState(key=mdFilePathKey) ?: ""
-//            val text = currentState(key = textKey) ?: getNoteText(context, mdFilePath)
             val text = currentState(key=textKey) ?: getNoteText(context, mdFilePath)
             val vaultPath = currentState(key= vaultPathKey) ?: ""
-            val showTools = currentState(key=showTools) ?: true
+//            val showTools = currentState(key=showTools) ?: true
 
-            val renderer = BitmapRenderer(context)
+//            val dpWidth = if (showTools)
+//                LocalSize.current.width.value - buttonSize - paddingSize*2
+//            else
+//                LocalSize.current.width.value - paddingSize*2
+//            val localWidth = context.toPx(dpWidth)
 
-            var dpWidth = if (showTools)
-                LocalSize.current.width.value - buttonSize - paddingSize*2
-            else
-                LocalSize.current.width.value - paddingSize*2
-            val localWidth = context.toPx(dpWidth)
-
-            var encodedFile = mdFilePath.split("/").lastOrNull()?.dropLast(3)
-            encodedFile = URLEncoder.encode(encodedFile, "UTF-8").replace("+", "%20")
-            var encodedVault = vaultPath.split("/").lastOrNull()
-            encodedVault = URLEncoder.encode(encodedVault, "UTF-8").replace("+", "%20")
-            val uri = Uri.parse(mdFilePath)
+//            var encodedFile = mdFilePath.split("/").lastOrNull()?.dropLast(3)
+//            encodedFile = URLEncoder.encode(encodedFile, "UTF-8").replace("+", "%20")
+//            var encodedVault = vaultPath.split("/").lastOrNull()
+//            encodedVault = URLEncoder.encode(encodedVault, "UTF-8").replace("+", "%20")
+            val uri = mdFilePath.toUri()
 
             val openNote = Intent(Intent.ACTION_EDIT).apply {
                 setDataAndType(uri, "text/markdown")
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                setPackage("net.gsantner.markor") // Force Markor as the target app
+//                setPackage("net.gsantner.markor") // Force Markor as the target app
             }
 //            val newNote = Intent(Intent.ACTION_VIEW,
 //                Uri.parse("obsidian://new?vault=$encodedVault&name=New%20note")
@@ -135,40 +139,6 @@ object PageWidget: GlanceAppWidget() {
                     .padding(paddingSize.dp)
                     .background(Color(0xff262626)),
             ) {
-//                if (showTools) {
-//                    Row(modifier = GlanceModifier){
-//                        Image(
-//                            provider = ImageProvider(R.drawable.baseline_refresh_24),
-//                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
-//                            contentDescription = "refresh",
-//                            modifier = GlanceModifier
-//                                .clickable(actionRunCallback<ReloadWidget>())
-//                                .size(buttonSize.dp)
-//                                .padding(start=paddingSize.dp)
-//                        )
-//
-//                        Image(
-//                            provider = ImageProvider(R.drawable.baseline_add_circle_outline_24),
-//                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
-//                            contentDescription = "add",
-//                            modifier = GlanceModifier
-//                                .clickable(actionStartActivity(newNote))
-//                                .size(buttonSize.dp)
-//                                .padding(start=paddingSize.dp)
-//                        )
-//                        Image(
-//                            provider = ImageProvider(R.drawable.baseline_search_24),
-//                            colorFilter = ColorFilter.tint(ColorProvider(R.color.button_color)),
-//                            contentDescription = "search",
-//                            modifier = GlanceModifier
-//                                .clickable(actionStartActivity(searchNote))
-//                                .size(buttonSize.dp)
-//                                .padding(start=paddingSize.dp)
-//                        )
-//                    }
-//                }
-
-
                 LazyColumn(
                     modifier = GlanceModifier
                         .defaultWeight()
@@ -176,9 +146,16 @@ object PageWidget: GlanceAppWidget() {
                         .cornerRadius(10.dp)
                 ) {
                     item {
+                        val remoteView = RemoteViews(LocalContext.current.packageName, R.layout.md_layout)
+                        val flavour = CommonMarkFlavourDescriptor()
+                        val parsedTree = MarkdownParser(flavour).buildMarkdownTreeFromString(text)
+                        val htmlString = HtmlGenerator(text, parsedTree, flavour, true).generateHtml()
 
-                        val remoteView = RemoteViews(LocalContext.current.packageName, R.layout.test_layout)
-                        remoteView.setImageViewBitmap(R.id.imageView,renderer.renderBitmap(text, localWidth.toInt()))
+                        remoteView.setCharSequence(
+                            R.id.textView,
+                            "setText",
+                            Html.fromHtml(htmlString, Html.FROM_HTML_MODE_COMPACT)
+                        )
                         AndroidRemoteViews(
                             remoteView,
                             modifier = GlanceModifier
@@ -190,31 +167,13 @@ object PageWidget: GlanceAppWidget() {
             }
         }
     }
-
-    private fun loadMarkdown(context: Context, uri: Uri): String {
-        val contentResolver = context.contentResolver
-
-        val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        // Check for the freshest data.
-        contentResolver.takePersistableUriPermission(uri, takeFlags)
-
-        try {
-            val ins: InputStream = contentResolver.openInputStream(uri)!!
-            val reader = BufferedReader(InputStreamReader(ins, "utf-8"))
-            val data = reader.lines().reduce { s, t -> s + "\n" + t }
-            return data.get()
-        } catch (err: FileNotFoundException) {
-            return ""
-        }
-    }
     fun getNoteText(context: Context, uriString: String): String {
-        if (uriString.isEmpty()) return ""
+        if (uriString.isEmpty()) return "<empty>"
         return try {
             val uri = uriString.toUri()
-            context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() } ?: ""
+            context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() } ?: "failed to load"
         } catch (e: Exception) {
-            ""
+            "failed to load"
         }
     }
 }
@@ -222,20 +181,4 @@ object PageWidget: GlanceAppWidget() {
 class SimplePageWidgetReceiver: GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget
         get() = PageWidget
-}
-
-
-class ReloadWidget: ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: ActionParameters
-    ) {
-
-        updateAppWidgetState(context, glanceId) { prefs ->
-            val text = PageWidget.getNoteText(context,prefs[PageWidget.mdFilePathKey] ?: "")
-            prefs[PageWidget.textKey] = text
-        }
-        PageWidget.update(context, glanceId)
-    }
 }
